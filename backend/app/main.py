@@ -5,6 +5,7 @@ from datetime import datetime
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api import universe as universe_routes
 from app.config import settings
 from app.storage.db import init_schema, db_connection
 
@@ -31,6 +32,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(universe_routes.router)
+
 
 @app.get("/health")
 async def health() -> dict:
@@ -39,9 +42,11 @@ async def health() -> dict:
         with db_connection() as conn:
             result = conn.execute("SELECT 1 AS ok").fetchone()
             db_ok = result is not None and result[0] == 1
+            ticker_count = conn.execute("SELECT COUNT(*) FROM universe").fetchone()[0]
         return {
             "status": "ok" if db_ok else "degraded",
             "database": "ok" if db_ok else "unreachable",
+            "universe_size": ticker_count,
             "timestamp": datetime.utcnow().isoformat() + "Z",
             "version": "0.1.0",
         }

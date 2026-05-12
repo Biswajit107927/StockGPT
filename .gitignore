@@ -29,3 +29,11 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Database files (regeneratable, never commit)
+data/*.duckdb
+data/*.parquet
+backend/data/*.duckdb
+backend/data/*.parquet
+backend/data/*.duckdb
+backend/data/*.parquet
