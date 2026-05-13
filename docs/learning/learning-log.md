@@ -300,3 +300,105 @@ building StockGPT. Updated weekly.
 - Node version mismatch (18 vs Vite 8 requirement) — upgraded via mise
 - Vite scaffold prompt loop — cancelled second invocation
 - CORS configuration validated by real browser request
+
+---
+
+## Day 3 — Agentic AI: First Agent Loop with Gemini
+
+### LLM Provider Choice
+
+- **API access ≠ subscription**: Claude Pro/Max plans are *chat* products;
+  API access is billed separately through console.anthropic.com.
+- **Free LLM options in 2026**: Google Gemini AI Studio is the most
+  generous (1,500 req/day, no credit card, frontier-class Gemini 2.5 Flash).
+  Groq is fastest, OpenRouter has variety, Cerebras has highest daily volume.
+- **Model choice doesn't affect architecture**: same agent loop shape
+  whether using Gemini, Claude, or GPT — only the client SDK differs.
+
+### Agent Concept
+
+- **An agent is a while loop around an LLM with tool use**: the LLM either
+  returns a final answer or requests a tool call; on tool call, code
+  executes the tool and feeds the result back; loop continues.
+- **The LLM never executes tools**: it requests them. Your code runs them.
+  Critical separation — LLM is outside the trust boundary.
+- **Bounded iteration**: production agents cap at 5-10 turns. Unbounded
+  loops can spin forever on confusing inputs and burn money.
+- **Division of labor**: LLM provides natural-language understanding +
+  synthesis; tools provide deterministic data. Don't make the LLM do
+  math or rankings — give it tools that do them.
+
+### Tool Design
+
+- **Narrow scope**: one tool, one thing. `get_sector_summary` not `do_stuff`.
+- **Typed parameters + return**: Pydantic models for return shapes.
+- **Self-describing**: docstring is the contract with the LLM, not just
+  for humans. Include purpose, when-to-use examples, constraints, args.
+- **Constrain inputs in docstrings**: listing valid sector names prevents
+  the LLM from hallucinating "Tech" instead of "Information Technology".
+- **Read-only by default**: tools that mutate need more careful design.
+- **Compose with small tools**: `list_sectors` + `get_sector_summary` better
+  than one mega-tool. Agent chains them as needed.
+
+### Agent Loop Architecture
+
+- **Tool registry pattern**: name → function dict. Single source of truth.
+  Agent loop doesn't import individual tools; it dispatches by name.
+- **System prompt** sets persona and behavior; sent every turn.
+- **Conversation history** (`contents`) grows each iteration: user question
+  → assistant tool call → user tool response → assistant tool call → ...
+  → assistant final answer.
+- **Pydantic serialization** for tool results: LLM expects JSON, so
+  `model.model_dump()` before sending back.
+- **Error handling on tool execution**: pass errors back to the LLM as
+  results; agent can recover by trying a different approach.
+
+### Agent Observability
+
+- **Trace dict** captures: tool calls (name, args, result/error), iteration
+  count, final answer. Returned alongside the answer.
+- **Why this matters**: debugging agent failures, eval rubrics, user trust
+  (showing what the agent did), and senior-engineer signal in interviews.
+- **Built from Day 1 of the agent**, not added later. Retrofitting
+  observability is much harder than building it in.
+
+### FastAPI Patterns for Agents
+
+- **POST not GET**: agent calls have side effects (LLM tokens, traces).
+- **Pydantic request validation**: `Field(min_length=1, max_length=500)`
+  for guardrails on inputs.
+- **HTTPException on agent failure**: graceful 500 response, not crash.
+- **No streaming yet** — Day 3 keeps it simple with request/response.
+  Streaming via SSE comes later.
+
+### React Patterns for Agent UIs
+
+- **`useMutation` not `useQuery`** for agent calls: actions with side
+  effects, not cacheable reads.
+- **`isPending` for loading state**: disable input, swap button label.
+- **Textarea + Enter-to-submit + Shift+Enter for newline**: chat UI
+  convention. Production-quality detail.
+- **Collapsible trace display**: most users want the answer; power users
+  and demos want the reasoning.
+
+### Production-Pattern Security
+
+- **API keys never leave `.env`**: never in chat, screenshots, error
+  messages, commits, terminal pastes. Rotated immediately if exposed.
+- **`.env` always gitignored, never committed**. Verify with
+  `git log --all --full-history -- .env`.
+- **Spending caps on API keys**: set monthly limit in provider console
+  before first use as a safety net.
+
+### Day 3 Concrete Outputs
+
+**Code shipped:**
+- Tool registry and first two tools (`get_sector_summary`, `list_sectors`)
+- Agent loop with Gemini tool use, capped iterations, full trace
+- POST /agent/ask endpoint with typed request/response
+- Frontend ChatPanel with chat input, answer display, collapsible trace
+- useAskAgent mutation hook
+- Agent API client function
+
+**End-to-end agentic AI working in browser**:
+question → React → FastAPI → Gemini → tool dispatch → DuckDB → answer.
