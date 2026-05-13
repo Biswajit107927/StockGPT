@@ -47,3 +47,14 @@ export async function getHealth(): Promise<HealthResponse> {
   const response = await apiClient.get<HealthResponse>("/health");
   return response.data;
 }
+
+// ============================================================================
+// Agent endpoint
+// ============================================================================
+
+import type { AskRequest, AskResponse } from "../types/agent";
+
+export async function askAgent(request: AskRequest): Promise<AskResponse> {
+  const response = await apiClient.post<AskResponse>("/agent/ask", request);
+  return response.data;
+}

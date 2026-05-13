@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { SectorList } from "./components/SectorList";
 import { TickerList } from "./components/TickerList";
+import { ChatPanel } from "./components/ChatPanel";
 
 function App() {
   const [selectedSector, setSelectedSector] = useState<string | null>(null);
@@ -15,6 +16,11 @@ function App() {
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-8">
+        <section className="mb-8">
+          <h2 className="text-lg font-semibold text-gray-900 mb-3">Ask</h2>
+          <ChatPanel />
+        </section>
+
         <section className="mb-8">
           <h2 className="text-lg font-semibold text-gray-900 mb-3">Sectors</h2>
           <SectorList onSectorClick={setSelectedSector} />

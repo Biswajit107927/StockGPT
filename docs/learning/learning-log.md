@@ -190,3 +190,113 @@ building StockGPT. Updated weekly.
 - Yahoo 429 rate limiting (separated core from enrichment)
 - mise PATH shadowing venv (explicit .venv/bin/python)
 - GitHub HTTPS auth deprecation (PAT/SSH path)
+---
+
+## Day 2 — React Frontend: Full-Stack Data Flow
+
+### Frontend Stack and Tooling
+
+- **Vite**: modern build tool replacing Create React App. 50ms hot reload,
+  ESM-native, esbuild + Rollup under the hood. Industry default for React.
+- **React + TypeScript template**: `--template react-ts` pre-configures
+  types, React 18, ESLint. Saves 30 min of setup.
+- **Node version managers**: mise / nvm / Homebrew can all manage Node;
+  Vite 8+ requires Node 20.
+- **npm package pinning**: `tailwindcss@3.4.13`, `@tanstack/react-query@5.59.0`
+  for deterministic installs.
+
+### TypeScript Practices
+
+- **Interface vs type**: `interface` for object shapes, `type` for unions
+  and aliases. Convention, not enforcement.
+- **Mirroring backend Pydantic models**: TypeScript interfaces in
+  `src/types/` mirror Pydantic models 1:1. Single source of truth.
+- **Snake_case preserved across boundary**: avoid double-conversion of
+  field names; let the wire format flow through.
+- **`string | null` matches Optional[str]**: explicit nullability.
+- **`number` for both ints and floats**: JS doesn't distinguish.
+
+### Tailwind CSS
+
+- **Utility-first**: compose styles via class names rather than writing CSS.
+- **Build-time purging**: only classes used in your code ship to production.
+- **Responsive prefixes**: `md:`, `lg:`, `xl:` for breakpoints.
+- **State prefixes**: `hover:`, `focus:`, `disabled:` modify behavior.
+- **Key idioms**: `max-w-6xl mx-auto px-4` (centered container),
+  `flex items-center justify-between` (header layout),
+  `grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3` (responsive grid).
+
+### React Patterns
+
+- **Functional components**: arrow functions returning JSX. Class
+  components are legacy.
+- **Hooks discipline**: every custom hook starts with `use`. React enforces
+  this rule via lint.
+- **`useState<T>(initial)`**: typed state. Type parameter is optional
+  but explicit when state can be null/union.
+- **Lifting state up**: parent owns state, children request changes via
+  callbacks (`onSectorClick`). Standard React pattern.
+- **Conditional rendering**: `{condition && (...)}` short-circuits.
+- **Optional chaining for callbacks**: `onSectorClick?.(value)` avoids
+  null check boilerplate.
+- **Component composition**: small focused components beat large mixed ones.
+  `SectorList`, `TickerList`, `App` each do one thing.
+
+### TanStack Query (Server State Management)
+
+- **`useQuery({queryKey, queryFn})`**: declarative data fetching.
+- **`queryKey` as cache identifier**: arrays let you parameterize
+  (e.g., `["universe", sector, limit]`).
+- **Automatic cache deduplication**: multiple components calling the same
+  hook share one network request.
+- **`enabled: condition`**: conditional fetching. Hook does nothing when
+  enabled is false.
+- **`staleTime`**: how long data stays fresh in cache without refetching.
+- **Built-in loading/error/empty states**: `isLoading`, `isError`, `error`,
+  `data`. Every component handles all four.
+- **`QueryClientProvider`**: wraps app, makes client available via context.
+
+### API Client Architecture
+
+- **Single source of truth**: all backend calls go through `src/api/client.ts`.
+  No scattered `fetch()` calls.
+- **Axios over fetch**: better defaults (auto JSON, interceptors, error
+  handling). Minor preference; teams differ.
+- **`axios.create()` instance**: shared config (baseURL, timeout, headers)
+  defined once.
+- **Generic types**: `axios.get<ResponseType>()` propagates types through.
+- **Environment variables**: `import.meta.env.VITE_API_BASE_URL` for
+  configurable backend URL. Variables must be `VITE_` prefixed.
+- **Functions, not classes**: lightweight, easy to mock.
+
+### Component Patterns
+
+- **Loading / error / empty / success**: every data-fetching component
+  handles all four states. Skip one, ship a silent bug.
+- **`error instanceof Error`**: defensive type narrowing for `unknown`.
+- **Props types inline**: small components don't need separate type files.
+- **Accessible defaults**: `<button>` over `<div>` for clickable elements.
+- **Pluralization**: `${count} ticker${count === 1 ? "" : "s"}`.
+- **Em-dash for null values**: `value ?? "—"` is cleaner than empty cells.
+
+### CORS and Cross-Origin Communication
+
+- **Frontend (5173) and backend (8000) are separate origins**.
+- **CORS middleware on FastAPI** explicitly allows the frontend origin.
+- **Without CORS config**: browser blocks requests with no helpful error.
+- The `allow_origins` list we set Day 1 was finally exercised today.
+
+### Day 2 Concrete Outputs
+
+**Code shipped:**
+- React + Vite + TypeScript + Tailwind frontend scaffolded
+- TanStack Query integrated for server state
+- Typed API client with axios
+- SectorList and TickerList components
+- useSectors and useUniverse custom hooks
+- Full-stack data flow: DuckDB -> FastAPI -> React UI
+
+**Real production problems solved:**
+- Node version mismatch (18 vs Vite 8 requirement) — upgraded via mise
+- Vite scaffold prompt loop — cancelled second invocation
+- CORS configuration validated by real browser request

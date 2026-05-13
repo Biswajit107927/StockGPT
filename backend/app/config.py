@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     fmp_api_key: str = ""
     finnhub_api_key: str = ""
+    gemini_api_key: str = ""
+
 
     backend_host: str = "0.0.0.0"
     backend_port: int = 8000

@@ -2,10 +2,12 @@
 from contextlib import asynccontextmanager
 from datetime import datetime
 
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import universe as universe_routes
+from app.api import agent as agent_routes
 from app.config import settings
 from app.storage.db import init_schema, db_connection
 
@@ -33,6 +35,7 @@ app.add_middleware(
 )
 
 app.include_router(universe_routes.router)
+app.include_router(agent_routes.router)
 
 
 @app.get("/health")
