@@ -402,3 +402,57 @@ building StockGPT. Updated weekly.
 
 **End-to-end agentic AI working in browser**:
 question → React → FastAPI → Gemini → tool dispatch → DuckDB → answer.
+
+---
+
+## Day 4 — Expanding Agent Capabilities
+
+### Tool Design Patterns
+
+- **Composing small tools over big ones**: kept tools narrow (one verb each).
+  Search, lookup, compare. Agent chains them naturally when needed.
+- **Graceful not-found handling**: get_ticker_details returns found=False
+  rather than raising. Tools should tell the LLM what went wrong, not crash.
+- **Multi-input tool with self-recovery hint**: compare_sectors returns
+  both `comparisons` (success) AND `not_found` (failures). LLM can
+  see "you used 'Tech' but it's not valid" and self-correct.
+- **Input validation in tools**: `max(1, min(limit, 100))` clamps weird LLM
+  inputs. Tools should be defensive against the LLM passing garbage.
+
+### Gemini Tool Selection Behavior
+
+- 5 tools in scope, agent chose correctly on all 4 test questions
+- System prompt strategy hints meaningfully shaped behavior — without the
+  hint, Gemini would likely have called get_sector_summary twice for
+  comparisons instead of compare_sectors once
+- 2 iterations per query (1 tool call + 1 synthesis) was consistent
+- Search by "tech" found 15 companies across IT, Health Care, Industrials —
+  agent grouped results clearly by sector in the synthesized answer
+
+### Function Declaration Schema for Gemini
+
+- Each tool needs name, description (docstring), and JSON Schema for params
+- `required` array specifies which params are mandatory
+- `type: "array"` with `items: {type: "string"}` for list parameters
+- Empty `properties: {}` is valid for parameterless tools
+
+### Reliability and Debugging
+
+- **LLM APIs are not deterministic**: same query can succeed or fail
+  transiently (rate limits, model load, network blips, edge cases)
+- **Encountered first 500 on day 4**: "Find companies with tech in name"
+  failed once, succeeded immediately after. Likely transient API issue.
+- **Improved error logging**: route now logs full traceback on agent
+  failures. Without this, debugging is nearly impossible — the original
+  error path swallowed exceptions in HTTPException wrapping.
+- **Lesson for production**: agents need retries, fallbacks, observability
+  by default. Reliability work is real engineering, not optional polish.
+
+### Concrete Outputs
+
+- 3 new tools with Pydantic return models
+- Tool registry expanded to 5 tools
+- Gemini function declarations expanded
+- System prompt with strategy hints
+- Better error logging in API route
+- End-to-end verified across 4 query types
