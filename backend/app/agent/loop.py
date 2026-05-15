@@ -11,7 +11,13 @@ from google.genai import types
 
 from app.agent.tools_registry import TOOL_REGISTRY, execute_tool
 from app.config import settings
-from app.tools.market import get_sector_summary, list_sectors
+from app.tools.market import (
+    get_sector_summary,
+    list_sectors,
+    search_companies_by_name,
+    get_ticker_details,
+    compare_sectors,
+)
 
 
 # System prompt — sets the agent's persona and instructions.
@@ -21,8 +27,19 @@ SYSTEM_PROMPT = """You are a stock market research assistant for the S&P 500.
 You have tools to query a database of S&P 500 companies. Use the tools to
 answer questions accurately. Do not guess at facts the tools can provide.
 
-When a user asks about a sector, use the get_sector_summary tool.
-When you need to know which sectors exist, use list_sectors first.
+Available tools:
+- get_sector_summary: count and sample tickers for a specific sector
+- list_sectors: list of all valid sector names
+- search_companies_by_name: find companies by partial name match
+- get_ticker_details: look up info on a specific ticker
+- compare_sectors: side-by-side counts for multiple sectors
+
+Strategy hints:
+- If a user asks about a specific ticker, use get_ticker_details.
+- If they ask to find companies by name, use search_companies_by_name.
+- If they ask "which sector is bigger", use compare_sectors (not multiple
+  separate calls to get_sector_summary).
+- If you're unsure about a sector name, call list_sectors first.
 
 Be concise and direct. State what you found, with relevant numbers.
 """
@@ -37,31 +54,81 @@ MODEL_NAME = "gemini-2.5-flash"
 def _tools_for_gemini() -> list[types.Tool]:
     """Build the Tool declarations Gemini needs to know about our functions.
 
-    Gemini's SDK can introspect Python functions directly — it reads the
-    function signature and docstring to build the schema. This is why
-    well-typed parameters and thorough docstrings matter so much.
+    Each declaration tells Gemini: tool name, what it does (docstring),
+    and what parameters it accepts (JSON Schema). Gemini reads these on
+    every call to decide which tools to invoke.
     """
     return [
         types.Tool(function_declarations=[
-            # Pass the function objects; the SDK builds the schema
-            {"name": "get_sector_summary",
-             "description": get_sector_summary.__doc__,
-             "parameters": {
-                 "type": "object",
-                 "properties": {
-                     "sector_name": {
-                         "type": "string",
-                         "description": "The exact GICS sector name (case-sensitive)"
-                     }
-                 },
-                 "required": ["sector_name"]
-             }},
-            {"name": "list_sectors",
-             "description": list_sectors.__doc__,
-             "parameters": {
-                 "type": "object",
-                 "properties": {},
-             }},
+            {
+                "name": "get_sector_summary",
+                "description": get_sector_summary.__doc__,
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "sector_name": {
+                            "type": "string",
+                            "description": "The exact GICS sector name (case-sensitive)",
+                        }
+                    },
+                    "required": ["sector_name"],
+                },
+            },
+            {
+                "name": "list_sectors",
+                "description": list_sectors.__doc__,
+                "parameters": {
+                    "type": "object",
+                    "properties": {},
+                },
+            },
+            {
+                "name": "search_companies_by_name",
+                "description": search_companies_by_name.__doc__,
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "name_fragment": {
+                            "type": "string",
+                            "description": "Substring to search for in company names (case-insensitive)",
+                        },
+                        "limit": {
+                            "type": "integer",
+                            "description": "Maximum number of results (default 20, max 100)",
+                        },
+                    },
+                    "required": ["name_fragment"],
+                },
+            },
+            {
+                "name": "get_ticker_details",
+                "description": get_ticker_details.__doc__,
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "ticker": {
+                            "type": "string",
+                            "description": "Ticker symbol to look up (e.g., AAPL, NVDA)",
+                        }
+                    },
+                    "required": ["ticker"],
+                },
+            },
+            {
+                "name": "compare_sectors",
+                "description": compare_sectors.__doc__,
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "sector_names": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "List of exact GICS sector names to compare (case-sensitive)",
+                        }
+                    },
+                    "required": ["sector_names"],
+                },
+            },
         ])
     ]
 

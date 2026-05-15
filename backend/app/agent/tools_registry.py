@@ -8,8 +8,13 @@ Gemini's tool use API works by name: when Gemini decides to call
 "get_sector_summary", we look up that name here to find the actual function.
 """
 from typing import Any, Callable
-
-from app.tools.market import get_sector_summary, list_sectors
+from app.tools.market import (
+    get_sector_summary,
+    list_sectors,
+    search_companies_by_name,
+    get_ticker_details,
+    compare_sectors,
+)
 
 
 # Map of tool name -> Python function.
@@ -17,6 +22,9 @@ from app.tools.market import get_sector_summary, list_sectors
 TOOL_REGISTRY: dict[str, Callable[..., Any]] = {
     "get_sector_summary": get_sector_summary,
     "list_sectors": list_sectors,
+    "search_companies_by_name": search_companies_by_name,
+    "get_ticker_details": get_ticker_details,
+    "compare_sectors": compare_sectors,
 }
 
 

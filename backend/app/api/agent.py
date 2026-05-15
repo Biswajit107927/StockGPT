@@ -4,6 +4,11 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
+import traceback
+import logging
+
+logger = logging.getLogger(__name__)
+
 from app.agent.loop import run_agent
 
 
@@ -48,8 +53,10 @@ async def ask(request: AskRequest) -> AskResponse:
         result = run_agent(request.question)
         return AskResponse(**result)
     except Exception as e:
-        # Catch any unexpected agent errors so the API stays responsive
+        # Print full traceback to uvicorn logs for debugging
+        logger.error("Agent failed on question: %r", request.question)
+        logger.error("Traceback:\n%s", traceback.format_exc())
         raise HTTPException(
             status_code=500,
-            detail=f"Agent error: {str(e)}",
+            detail=f"Agent error: {type(e).__name__}: {str(e)}",
         )
