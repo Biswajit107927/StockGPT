@@ -10,6 +10,8 @@ class Settings(BaseSettings):
     fmp_api_key: str = ""
     finnhub_api_key: str = ""
     gemini_api_key: str = ""
+    groq_api_key: str = ""
+
 
 
     backend_host: str = "0.0.0.0"
