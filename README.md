@@ -1,4 +1,5 @@
 # 📈 StockGPT
+![CI](https://github.com/Biswajit107927/StockGPT/actions/workflows/ci.yml/badge.svg)
 
 An AI-powered research agent for stock market analysis. Ask questions in natural language — get real-time data, charts, and insights powered by Google Gemini with automatic fallback to Groq Llama 3.3.
 
